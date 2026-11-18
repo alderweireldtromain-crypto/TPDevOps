@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: front
-          image: dockerhub-username/app-front:val
+          image: mtchebibi/app-front:val
           imagePullPolicy: Always
           ports:
             - containerPort: 8080

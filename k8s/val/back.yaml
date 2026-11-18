@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: back
-          image: dockerhub-username/app-back:val
+          image: mtchebibi/app-back:val
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
