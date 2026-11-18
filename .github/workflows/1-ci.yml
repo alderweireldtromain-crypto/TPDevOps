@@ -1,0 +1,44 @@
+name: 1 - CI (lint & validation)
+
+on:
+  # CI sur les pull requests vers les branches de validation et de production
+  pull_request:
+    branches: [val, main]
+
+  # Permet à 2_cd_val.yml de réutiliser cette CI avant de déployer
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint Dockerfiles
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile:
+          - front/Dockerfile
+          - back/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint ${{ matrix.dockerfile }}
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ${{ matrix.dockerfile }}
+          failure-threshold: warning
+
+  validate-k8s:
+    name: Validation des manifestes Kubernetes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validation des manifestes Kubernetes
+        uses: yannh/kubeconform-action@v0.1.0
+        with:
+          files: k8s/
+
+ 

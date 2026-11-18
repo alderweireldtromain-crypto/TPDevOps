@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="TaskFlow — application de démonstration du TP DevOps (Dev, Val, Prod).">
+  <title>TaskFlow · TP DevOps</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="orb orb--one" aria-hidden="true"></div>
+  <div class="orb orb--two" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="TaskFlow, accueil">
+      <span class="brand__logo" aria-hidden="true">TF</span>
+      <span class="brand__text">
+        <strong>TaskFlow</strong>
+        <small>TP DevOps · Kubernetes</small>
+      </span>
+    </a>
+
+    <div class="topbar__meta">
+      <span id="api-status" class="status status--pending">
+        <span class="status__dot" aria-hidden="true"></span>
+        <span id="api-status-label">Connexion…</span>
+      </span>
+      <span id="env-badge" class="badge" title="Environnement de déploiement">dev</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero__copy">
+        <p class="eyebrow">Dev → Val → Prod</p>
+        <h1 id="hero-title">Une pipeline,<br><span>trois environnements.</span></h1>
+        <p class="hero__text">
+          Front Nginx, API Node.js et base PostgreSQL déployés sur Kubernetes.
+          Cette interface vérifie le bon fonctionnement de la chaîne complète.
+        </p>
+      </div>
+
+      <dl class="stats" aria-label="Statistiques des tâches">
+        <div class="stat">
+          <dt>Total</dt>
+          <dd id="stat-total">–</dd>
+        </div>
+        <div class="stat stat--accent">
+          <dt>En cours</dt>
+          <dd id="stat-pending">–</dd>
+        </div>
+        <div class="stat">
+          <dt>Terminées</dt>
+          <dd id="stat-done">–</dd>
+        </div>
+      </dl>
+    </section>
+
+    <div id="banner" class="banner" role="alert" hidden>
+      <span class="banner__icon" aria-hidden="true">!</span>
+      <span id="banner-text"></span>
+      <button id="banner-retry" class="banner__retry" type="button">Réessayer</button>
+    </div>
+
+    <section class="panel" aria-labelledby="form-title">
+      <div class="panel__head">
+        <div>
+          <p class="eyebrow">Nouvelle tâche</p>
+          <h2 id="form-title">Ajouter au backlog</h2>
+        </div>
+        <span class="hint">API <code>/api/tasks</code></span>
+      </div>
+
+      <form id="task-form" class="task-form">
+        <div class="field field--grow">
+          <label for="task-title">Titre <span aria-hidden="true">*</span></label>
+          <input
+            id="task-title"
+            name="title"
+            type="text"
+            maxlength="200"
+            placeholder="Ex. Déployer la version 1.0 en production"
+            autocomplete="off"
+            required
+          >
+        </div>
+
+        <div class="field field--priority">
+          <label for="task-priority">Priorité</label>
+          <select id="task-priority" name="priority">
+            <option value="low">Basse</option>
+            <option value="normal" selected>Normale</option>
+            <option value="high">Haute</option>
+          </select>
+        </div>
+
+        <div class="field field--full">
+          <label for="task-description">Description <span class="muted">(optionnel)</span></label>
+          <textarea
+            id="task-description"
+            name="description"
+            rows="2"
+            maxlength="2000"
+            placeholder="Contexte, critères d'acceptation, lien vers la Pull Request…"
+          ></textarea>
+        </div>
+
+        <div class="task-form__actions">
+          <button id="submit-button" class="button button--primary" type="submit">
+            <span class="button__plus" aria-hidden="true">+</span>
+            Ajouter la tâche
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel panel--list" aria-labelledby="list-title">
+      <div class="toolbar">
+        <div>
+          <p class="eyebrow">Backlog</p>
+          <h2 id="list-title">Tâches du groupe</h2>
+        </div>
+
+        <div class="toolbar__right">
+          <div class="filters" role="group" aria-label="Filtrer les tâches">
+            <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">Toutes</button>
+            <button class="filter" type="button" data-filter="pending" aria-pressed="false">En cours</button>
+            <button class="filter" type="button" data-filter="done" aria-pressed="false">Terminées</button>
+          </div>
+          <button id="refresh-button" class="icon-button" type="button" title="Actualiser" aria-label="Actualiser les tâches">
+            ↻
+          </button>
+        </div>
+      </div>
+
+      <ul id="task-list" class="tasks" aria-live="polite"></ul>
+
+      <div id="empty-state" class="empty" hidden>
+        <div class="empty__icon" aria-hidden="true">✓</div>
+        <h3 id="empty-title">Aucune tâche</h3>
+        <p id="empty-text">Ajoutez votre première tâche avec le formulaire ci-dessus.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>TaskFlow · <span id="version-label">version dev</span></p>
+    <p class="footer__meta">Node.js · PostgreSQL · Nginx · Kubernetes</p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>

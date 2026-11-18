@@ -1,0 +1,63 @@
+name: 3 - CD Prod
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }} (prod)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [back, front]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Connexion Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build et push tag prod
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/app-${{ matrix.service }}:prod
+            ${{ secrets.DOCKERHUB_USERNAME }}/app-${{ matrix.service }}:prod-${{ github.sha }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/app-${{ matrix.service }}:latest
+
+  deploy:
+    name: Déploiement Kubernetes Prod
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Déploiement
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          set -euo pipefail
+          kubectl create namespace prod --dry-run=client -o yaml | kubectl apply -f -
+          sed -i "s|dockerhub-username|${DOCKERHUB_USERNAME}|g" k8s/prod/*.yaml
+          kubectl apply -f k8s/prod/
+          kubectl -n prod rollout restart deployment/back deployment/front
+          kubectl -n prod rollout status deployment/db --timeout=180s
+          kubectl -n prod rollout status deployment/back --timeout=180s
+          kubectl -n prod rollout status deployment/front --timeout=120s
+
+      - name: Smoke test
+        run: |
+          curl --fail --silent --show-error \
+            --retry 10 --retry-delay 5 --retry-all-errors \
+            http://127.0.0.1:30080/api/health

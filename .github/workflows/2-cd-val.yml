@@ -1,0 +1,62 @@
+name: 2 - CD Val
+
+on:
+  push:
+    branches: [val]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.service }} (val)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [back, front]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Connexion Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build et push tag val
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/app-${{ matrix.service }}:val
+            ${{ secrets.DOCKERHUB_USERNAME }}/app-${{ matrix.service }}:val-${{ github.sha }}
+
+  deploy:
+    name: Déploiement Kubernetes Val
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Déploiement
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          set -euo pipefail
+          kubectl create namespace val --dry-run=client -o yaml | kubectl apply -f -
+          sed -i "s|dockerhub-username|${DOCKERHUB_USERNAME}|g" k8s/val/*.yaml
+          kubectl apply -f k8s/val/
+          kubectl -n val rollout restart deployment/back deployment/front
+          kubectl -n val rollout status deployment/db --timeout=180s
+          kubectl -n val rollout status deployment/back --timeout=180s
+          kubectl -n val rollout status deployment/front --timeout=120s
+
+      - name: Smoke test
+        run: |
+          curl --fail --silent --show-error \
+            --retry 10 --retry-delay 5 --retry-all-errors \
+            http://127.0.0.1:30081/api/health
