@@ -39,6 +39,7 @@ jobs:
   deploy:
     name: Déploiement Kubernetes Prod
     needs: build
+    if: false # Déploiement exécuté manuellement sur le poste hôte K8s
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
