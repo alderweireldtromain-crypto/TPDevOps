@@ -67,7 +67,7 @@
       <div class="panel__head">
         <div>
           <p class="eyebrow">Nouvelle tâche</p>
-          <h2 id="form-title">Ajouter au backlog</h2>
+          <h2 id="form-title">Ajouter une tâche</h2>
         </div>
         <span class="hint">API <code>/api/tasks</code></span>
       </div>
@@ -113,34 +113,6 @@
           </button>
         </div>
       </form>
-    </section>
-
-    <section class="panel panel--list" aria-labelledby="list-title">
-      <div class="toolbar">
-        <div>
-          <p class="eyebrow">Backlog hihi</p>
-          <h2 id="list-title">Tâches du groupe</h2>
-        </div>
-
-        <div class="toolbar__right">
-          <div class="filters" role="group" aria-label="Filtrer les tâches">
-            <button class="filter is-active" type="button" data-filter="all" aria-pressed="true">Toutes</button>
-            <button class="filter" type="button" data-filter="pending" aria-pressed="false">En cours</button>
-            <button class="filter" type="button" data-filter="done" aria-pressed="false">Terminées</button>
-          </div>
-          <button id="refresh-button" class="icon-button" type="button" title="Actualiser" aria-label="Actualiser les tâches">
-            ↻
-          </button>
-        </div>
-      </div>
-
-      <ul id="task-list" class="tasks" aria-live="polite"></ul>
-
-      <div id="empty-state" class="empty" hidden>
-        <div class="empty__icon" aria-hidden="true">✓</div>
-        <h3 id="empty-title">Aucune tâche</h3>
-        <p id="empty-text">Ajoutez votre première tâche avec le formulaire ci-dessus.</p>
-      </div>
     </section>
   </main>
 

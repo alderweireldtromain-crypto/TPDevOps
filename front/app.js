@@ -1,16 +1,9 @@
 'use strict';
 
 const API_URL = '/api';
-const PRIORITY_LABELS = {
-  low: 'Basse',
-  normal: 'Normale',
-  high: 'Haute',
-};
 
 const state = {
   tasks: [],
-  filter: 'all',
-  online: false,
   retryTimer: null,
 };
 
@@ -27,12 +20,6 @@ const elements = {
   priority: document.querySelector('#task-priority'),
   description: document.querySelector('#task-description'),
   submit: document.querySelector('#submit-button'),
-  taskList: document.querySelector('#task-list'),
-  empty: document.querySelector('#empty-state'),
-  emptyTitle: document.querySelector('#empty-title'),
-  emptyText: document.querySelector('#empty-text'),
-  filters: document.querySelectorAll('[data-filter]'),
-  refresh: document.querySelector('#refresh-button'),
   statTotal: document.querySelector('#stat-total'),
   statPending: document.querySelector('#stat-pending'),
   statDone: document.querySelector('#stat-done'),
@@ -59,27 +46,6 @@ async function api(path, options = {}) {
   }
 
   return payload;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
-}
-
-function formatDate(value) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-
-  return new Intl.DateTimeFormat('fr-FR', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(date);
 }
 
 function setStatus(mode, label) {
@@ -117,68 +83,6 @@ function updateStats() {
   elements.statDone.textContent = done;
 }
 
-function renderTasks() {
-  const visibleTasks = state.tasks.filter((task) => {
-    if (state.filter === 'done') return task.done;
-    if (state.filter === 'pending') return !task.done;
-    return true;
-  });
-
-  elements.taskList.innerHTML = visibleTasks
-    .map(
-      (task) => `
-        <li class="task ${task.done ? 'is-done' : ''}">
-          <label class="task__check" title="${task.done ? 'Marquer comme à faire' : 'Marquer comme terminée'}">
-            <input
-              type="checkbox"
-              data-action="toggle"
-              data-id="${task.id}"
-              ${task.done ? 'checked' : ''}
-              aria-label="Terminer la tâche ${escapeHtml(task.title)}"
-            >
-            <span class="task__box" aria-hidden="true">✓</span>
-          </label>
-
-          <div class="task__body">
-            <p class="task__title">${escapeHtml(task.title)}</p>
-            ${task.description ? `<p class="task__description">${escapeHtml(task.description)}</p>` : ''}
-            <div class="task__meta">
-              <span class="priority priority--${escapeHtml(task.priority)}">${escapeHtml(PRIORITY_LABELS[task.priority] || task.priority)}</span>
-              <span>Créée le ${escapeHtml(formatDate(task.created_at))}</span>
-            </div>
-          </div>
-
-          <div class="task__actions">
-            <button
-              type="button"
-              class="task__delete"
-              data-action="delete"
-              data-id="${task.id}"
-              title="Supprimer"
-              aria-label="Supprimer la tâche ${escapeHtml(task.title)}"
-            >×</button>
-          </div>
-        </li>
-      `,
-    )
-    .join('');
-
-  elements.empty.hidden = visibleTasks.length > 0;
-
-  if (state.filter === 'done') {
-    elements.emptyTitle.textContent = 'Aucune tâche terminée';
-    elements.emptyText.textContent = 'Cochez une tâche pour la retrouver ici.';
-  } else if (state.filter === 'pending') {
-    elements.emptyTitle.textContent = 'Tout est à jour';
-    elements.emptyText.textContent = 'Aucune tâche en cours dans le backlog.';
-  } else {
-    elements.emptyTitle.textContent = 'Aucune tâche';
-    elements.emptyText.textContent = 'Ajoutez votre première tâche avec le formulaire ci-dessus.';
-  }
-
-  updateStats();
-}
-
 async function loadInfo() {
   const info = await api('/info');
   elements.envBadge.textContent = info.environment;
@@ -189,28 +93,23 @@ async function loadInfo() {
 async function loadTasks() {
   const data = await api('/tasks');
   state.tasks = Array.isArray(data.tasks) ? data.tasks : [];
-  renderTasks();
+  updateStats();
 }
 
 async function refresh() {
   clearTimeout(state.retryTimer);
-  elements.refresh.disabled = true;
 
   try {
     await Promise.all([loadInfo(), loadTasks()]);
-    state.online = true;
     setStatus('ok', 'API connectée');
     hideBanner();
   } catch (error) {
-    state.online = false;
     setStatus('down', 'API indisponible');
     showBanner(
       `${error.message} — la base de données ou l'API est peut-être encore en cours de démarrage.`,
       { error: true },
     );
     scheduleRetry();
-  } finally {
-    elements.refresh.disabled = false;
   }
 }
 
@@ -244,7 +143,7 @@ async function createTask(event) {
     elements.priority.value = 'normal';
     elements.title.focus();
     await loadTasks();
-    showToast('Tâche ajoutée au backlog.');
+    showToast('Tâche ajoutée.');
     hideBanner();
   } catch (error) {
     showToast(error.message, { error: true });
@@ -253,66 +152,7 @@ async function createTask(event) {
   }
 }
 
-async function toggleTask(id, done) {
-  try {
-    await api(`/tasks/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ done }),
-    });
-    await loadTasks();
-    showToast(done ? 'Tâche terminée.' : 'Tâche remise en cours.');
-  } catch (error) {
-    showToast(error.message, { error: true });
-    await loadTasks().catch(() => {});
-  }
-}
-
-async function deleteTask(id) {
-  const task = state.tasks.find((item) => item.id === id);
-  const label = task ? `« ${task.title} »` : 'cette tâche';
-
-  if (!window.confirm(`Supprimer ${label} ?`)) return;
-
-  try {
-    await api(`/tasks/${id}`, { method: 'DELETE' });
-    await loadTasks();
-    showToast('Tâche supprimée.');
-  } catch (error) {
-    showToast(error.message, { error: true });
-  }
-}
-
-function setFilter(filter) {
-  state.filter = filter;
-
-  elements.filters.forEach((button) => {
-    const active = button.dataset.filter === filter;
-    button.classList.toggle('is-active', active);
-    button.setAttribute('aria-pressed', String(active));
-  });
-
-  renderTasks();
-}
-
 elements.form.addEventListener('submit', createTask);
-
-elements.taskList.addEventListener('change', (event) => {
-  const checkbox = event.target.closest('[data-action="toggle"]');
-  if (!checkbox) return;
-  toggleTask(Number(checkbox.dataset.id), checkbox.checked);
-});
-
-elements.taskList.addEventListener('click', (event) => {
-  const button = event.target.closest('[data-action="delete"]');
-  if (!button) return;
-  deleteTask(Number(button.dataset.id));
-});
-
-elements.filters.forEach((button) => {
-  button.addEventListener('click', () => setFilter(button.dataset.filter));
-});
-
-elements.refresh.addEventListener('click', refresh);
 elements.bannerRetry.addEventListener('click', refresh);
 
 refresh();
