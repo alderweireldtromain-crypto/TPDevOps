@@ -36,9 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validation des manifestes Kubernetes
-        uses: yannh/kubeconform-action@v0.1.0
-        with:
-          files: k8s/
-
- 
+      - name: Installer et exécuter kubeconform
+        run: |
+          curl -sL https://github.com/yannh/kubeconform/releases/latest/download/kubeconform-linux-amd64.tar.gz | tar xz
+          ./kubeconform -summary -strict k8s/val/ k8s/prod/
